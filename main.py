@@ -1,4 +1,5 @@
 import pygame
+import random
 
 pygame.init()
 
@@ -11,6 +12,11 @@ screen_height = 400 + bottom_panel
 
 screen = pygame.display.set_mode((screen_width, screen_height))
 pygame.display.set_caption("Battle")
+
+current_fighter = 1
+total_fighters = 3
+action_cooldown = 0
+action_wait_time = 100
 
 # define font
 font = pygame.font.SysFont("Inter", 26)
@@ -103,7 +109,26 @@ class Fighter:
             self.update_time = pygame.time.get_ticks()
             self.frame_index += 1
         if self.frame_index >= len(self.animation_list[self.action]):
-            self.frame_index = 0
+            self.idle()
+
+    def idle(self):
+        self.action = 0
+        self.frame_index = 0
+        self.update_time = pygame.time.get_ticks()
+
+    def attack(self, target):
+        # deal damage to enemy
+        rand = random.randint(-5, 5)
+        damage = rand + self.strength
+        target.hp -= damage
+
+        if target.hp < 1:
+            target.hp = 0
+            target.alive = False
+
+        self.action = 1
+        self.frame_index = 0
+        self.update_time = pygame.time.get_ticks()
 
 
 class HealthBar:
@@ -125,8 +150,15 @@ knight = Fighter(200, 290, "Knight", 30, 10, 3)
 knight_health_bar = HealthBar(
     190, screen_height - bottom_panel + 35, knight.hp, knight.max_hp
 )
+
 bandit1 = Fighter(550, 295, "Bandit", 20, 6, 1)
+bandit1_health_bar = HealthBar(
+    500, screen_height - bottom_panel + 35, bandit1.hp, bandit1.max_hp
+)
 bandit2 = Fighter(700, 295, "Bandit", 20, 6, 1)
+bandit2_health_bar = HealthBar(
+    500, screen_height - bottom_panel + 80, bandit2.hp, bandit2.max_hp
+)
 
 # health bar above bandit
 bandit_list = []
@@ -144,10 +176,36 @@ while run:
     knight.draw()
 
     knight_health_bar.draw(knight.hp)
+    bandit1_health_bar.draw(bandit1.hp)
+    bandit2_health_bar.draw(bandit2.hp)
 
     for bandit in bandit_list:
         bandit.update()
         bandit.draw()
+
+    if knight.alive:
+        if current_fighter == 1:
+            action_cooldown += 1
+            if action_cooldown >= action_wait_time:
+                knight.attack(bandit1)
+                current_fighter += 1
+                action_cooldown = 0
+
+    # enemy acition
+    for count, bandit in enumerate(bandit_list):
+        if current_fighter == count + 2:
+            if bandit.alive:
+                action_cooldown += 1
+                if action_cooldown >= action_wait_time:
+                    bandit.attack(knight)
+                    current_fighter += 1
+                    action_cooldown = 0
+            else:
+                current_fighter += 1
+
+    # if all fighters have had a turn reset
+    if current_fighter > total_fighters:
+        current_fighter = 1
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
