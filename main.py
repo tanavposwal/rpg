@@ -1,5 +1,6 @@
 import pygame
 import random
+from button import Button
 
 pygame.init()
 
@@ -19,6 +20,7 @@ action_cooldown = 0
 action_wait_time = 100
 attack = False
 potion = False
+potion_effect = 15
 clicked = False
 
 # define font
@@ -28,6 +30,7 @@ font = pygame.font.SysFont("Inter", 26)
 background_img = pygame.image.load("img/Background/background.png").convert_alpha()
 panel_img = pygame.image.load("img/Icons/panel.png").convert_alpha()
 sword_img = pygame.image.load("img/Icons/sword.png").convert_alpha()
+potion_img = pygame.image.load("img/Icons/potion.png").convert_alpha()
 
 
 def draw_text(text, x, y, color, font):
@@ -50,16 +53,9 @@ def draw_panel():
         font,
     )
     draw_text(
-        f"Strength: {knight.strength}",
-        40,
-        screen_height - bottom_panel + 60,
-        (255, 255, 255),
-        font,
-    )
-    draw_text(
         f"Potions: {knight.potions}",
         40,
-        screen_height - bottom_panel + 90,
+        screen_height - bottom_panel + 60,
         (255, 255, 255),
         font,
     )
@@ -155,11 +151,11 @@ knight_health_bar = HealthBar(
     190, screen_height - bottom_panel + 35, knight.hp, knight.max_hp
 )
 
-bandit1 = Fighter(550, 295, "Bandit", 20, 4, 1)
+bandit1 = Fighter(550, 295, "Bandit", 20, 5, 1)
 bandit1_health_bar = HealthBar(
     500, screen_height - bottom_panel + 35, bandit1.hp, bandit1.max_hp
 )
-bandit2 = Fighter(700, 295, "Bandit", 20, 4, 1)
+bandit2 = Fighter(700, 295, "Bandit", 20, 5, 1)
 bandit2_health_bar = HealthBar(
     500, screen_height - bottom_panel + 80, bandit2.hp, bandit2.max_hp
 )
@@ -168,6 +164,11 @@ bandit2_health_bar = HealthBar(
 bandit_list = []
 bandit_list.append(bandit1)
 bandit_list.append(bandit2)
+
+# create button
+potion_button = Button(
+    screen, 200, screen_height - bottom_panel + 80, potion_img, 40, 40
+)
 
 run = True
 while run:
@@ -190,6 +191,7 @@ while run:
     attack = False
     potion = False
     target = None
+
     # reset mouse
     pygame.mouse.set_visible(True)
     pos = pygame.mouse.get_pos()
@@ -202,6 +204,10 @@ while run:
                 attack = True
                 target = bandit_list[count]
 
+    # button actions
+    if potion_button.draw():
+        potion = True
+
     # player actions
     if knight.alive:
         if current_fighter == 1:
@@ -211,6 +217,18 @@ while run:
                     knight.attack(target)
                     current_fighter += 1
                     action_cooldown = 0
+                if potion:
+                    if knight.potions > 0:
+                        # heal
+                        if knight.max_hp - knight.hp > potion_effect:
+                            heal_amount = potion_effect
+                        else:
+                            heal_amount = knight.max_hp - knight.hp
+                        knight.hp += heal_amount
+                        knight.potions -= 1
+                        potion = False
+                        current_fighter += 1
+                        action_cooldown = 0
 
     # enemy acition
     for count, bandit in enumerate(bandit_list):
@@ -218,9 +236,20 @@ while run:
             if bandit.alive:
                 action_cooldown += 1
                 if action_cooldown >= action_wait_time:
-                    bandit.attack(knight)
-                    current_fighter += 1
-                    action_cooldown = 0
+                    if bandit.hp < bandit.max_hp / 2 and bandit.potions > 0:
+                        # heal
+                        if bandit.max_hp - bandit.hp > potion_effect:
+                            heal_amount = potion_effect
+                        else:
+                            heal_amount = bandit.max_hp - bandit.hp
+                        bandit.hp += heal_amount
+                        bandit.potions -= 1
+                        current_fighter += 1
+                        action_cooldown = 0
+                    else:
+                        bandit.attack(knight)
+                        current_fighter += 1
+                        action_cooldown = 0
             else:
                 current_fighter += 1
 
