@@ -25,7 +25,7 @@ clicked = False
 game_over = 0
 
 # define font
-font = pygame.font.SysFont("Inter", 26)
+font = pygame.font.SysFont("Inter", 18)
 
 # load images
 background_img = pygame.image.load("img/Background/background.png").convert_alpha()
@@ -53,13 +53,6 @@ def draw_panel():
         f"HP: {knight.hp}/{knight.max_hp}",
         40,
         screen_height - bottom_panel + 30,
-        (255, 255, 255),
-        font,
-    )
-    draw_text(
-        f"Potions: {knight.potions}",
-        40,
-        screen_height - bottom_panel + 60,
         (255, 255, 255),
         font,
     )
@@ -176,6 +169,7 @@ class Fighter:
         self.frame_index = 0
         self.update_time = pygame.time.get_ticks()
 
+
 class HealthBar:
     def __init__(self, x, y, hp, max_hp):
         self.x = x
@@ -206,7 +200,7 @@ bandit_list.append(bandit2)
 
 # create button
 potion_button = Button(
-    screen, 200, screen_height - bottom_panel + 80, potion_img, 40, 40
+    screen, 40, screen_height - bottom_panel + 70, potion_img, 50, 50
 )
 restart_button = Button(screen, 330, 120, restart_img, 120, 30)
 
@@ -245,8 +239,15 @@ while run:
                 target = bandit_list[count]
 
     # button actions
-    if potion_button.draw():
+    if potion_button.draw() and knight.hp < 25:
         potion = True
+    draw_text(
+        str(knight.potions),
+        70,
+        screen_height - bottom_panel + 70,
+        (255, 255, 255),
+        font,
+    )
 
     if game_over == 0:
         # player actions
