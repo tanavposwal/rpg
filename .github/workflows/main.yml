@@ -33,7 +33,7 @@ jobs:
       - name: PyInstaller Build
         uses: eric2788/pyinstaller-build@0.1.3
         with:
-          main: main  # Replace with your main Python file name
+          main: your_main_file_name  # Replace with your main Python file name
           dist: ./dist
           python_version: 3.10
           artifact: pygame_game
