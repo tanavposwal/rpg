@@ -7,9 +7,8 @@ pygame.init()
 clock = pygame.time.Clock()
 fps = 60
 
-bottom_panel = 150
 screen_width = 800
-screen_height = 400 + bottom_panel
+screen_height = 400
 
 screen = pygame.display.set_mode((screen_width, screen_height))
 pygame.display.set_caption("Battle")
@@ -25,7 +24,7 @@ clicked = False
 game_over = 0
 
 # define font
-font = pygame.font.SysFont("Inter", 18)
+font = pygame.font.SysFont("Georgia", 18)
 
 # load images
 background_img = pygame.image.load("img/Background/background.png").convert_alpha()
@@ -35,6 +34,11 @@ potion_img = pygame.image.load("img/Icons/potion.png").convert_alpha()
 restart_img = pygame.image.load("img/Icons/restart.png").convert_alpha()
 victory_img = pygame.image.load("img/Icons/victory.png").convert_alpha()
 defeat_img = pygame.image.load("img/Icons/defeat.png").convert_alpha()
+setting_img = pygame.image.load("img/Icons/Buttons/Settings.png").convert_alpha()
+volume_img = pygame.image.load("img/Icons/Buttons/Volume.png").convert_alpha()
+achievement_img = pygame.image.load(
+    "img/Icons/Buttons/Achievements.png"
+).convert_alpha()
 
 
 def draw_text(text, x, y, color, font):
@@ -47,15 +51,11 @@ def draw_bg():
 
 
 def draw_panel():
-    screen.blit(panel_img, (0, screen_height - bottom_panel))
-    # show stats
-    draw_text(
-        f"HP: {knight.hp}/{knight.max_hp}",
-        40,
-        screen_height - bottom_panel + 30,
-        (255, 255, 255),
-        font,
-    )
+    lvl_badge = pygame.image.load(
+        f"img/Icons/Levels/0{curr_level + 1}.png"
+    ).convert_alpha()
+    draw_text("Level", 350, 20, (255, 255, 255), font)
+    screen.blit(lvl_badge, (405, 23))
 
 
 class Fighter:
@@ -185,24 +185,35 @@ class HealthBar:
         )
 
 
+curr_level = 0
+levels = [
+    [(550, 295), (700, 295)],
+    [(550, 295), (650, 295), (750, 295)],
+]
+
 knight = Fighter(200, 290, "Knight", 30, 10, 3)
 knight_health_bar = HealthBar(175, 240, knight.hp, knight.max_hp)
 
-bandit1 = Fighter(550, 295, "Bandit", 20, 5, 1)
-bandit1_health_bar = HealthBar(525, 240, bandit1.hp, bandit1.max_hp)
-bandit2 = Fighter(700, 295, "Bandit", 20, 5, 1)
-bandit2_health_bar = HealthBar(675, 240, bandit2.hp, bandit2.max_hp)
-
-# health bar above bandit
 bandit_list = []
-bandit_list.append(bandit1)
-bandit_list.append(bandit2)
+bandit_healthbar_list = []
+
+
+def make_level():
+    for x, y in levels[curr_level]:
+        bandit = Fighter(x, y, "Bandit", 20, 5, 1)
+        bandit_health_bar = HealthBar(x - 25, y - 55, bandit.hp, bandit.max_hp)
+        bandit_list.append(bandit)
+        bandit_healthbar_list.append(bandit_health_bar)
+
 
 # create button
-potion_button = Button(
-    screen, 40, screen_height - bottom_panel + 70, potion_img, 50, 50
-)
+potion_button = Button(screen, 150, 15, potion_img, 30, 30)
+setting_button = Button(screen, 650, 20, setting_img, 30, 30)
+achievement_button = Button(screen, 700, 20, achievement_img, 30, 30)
+volume_button = Button(screen, 750, 20, volume_img, 30, 30)
 restart_button = Button(screen, 330, 120, restart_img, 120, 30)
+
+make_level()
 
 run = True
 while run:
@@ -214,12 +225,11 @@ while run:
     knight.draw()
 
     knight_health_bar.draw(knight.hp)
-    bandit1_health_bar.draw(bandit1.hp)
-    bandit2_health_bar.draw(bandit2.hp)
 
-    for bandit in bandit_list:
-        bandit.update()
-        bandit.draw()
+    for i in range(len(bandit_list)):
+        bandit_list[i].update()
+        bandit_list[i].draw()
+        bandit_healthbar_list[i].draw(bandit_list[i].hp)
 
     # control player actions
     attack = False
@@ -234,17 +244,20 @@ while run:
             # hide mouse
             pygame.mouse.set_visible(False)
             screen.blit(sword_img, pos)
-            if clicked == True:
+            if clicked:
                 attack = True
                 target = bandit_list[count]
 
     # button actions
+    setting_button.draw()
+    achievement_button.draw()
+    volume_button.draw()
     if potion_button.draw() and knight.hp < 25:
         potion = True
     draw_text(
         str(knight.potions),
-        70,
-        screen_height - bottom_panel + 70,
+        170,
+        10,
         (255, 255, 255),
         font,
     )
@@ -255,7 +268,7 @@ while run:
             if current_fighter == 1:
                 action_cooldown += 1
                 if action_cooldown >= action_wait_time:
-                    if attack and target != None:
+                    if attack and target is not None:
                         knight.attack(target)
                         current_fighter += 1
                         action_cooldown = 0
