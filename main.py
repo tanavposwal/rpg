@@ -13,6 +13,24 @@ screen_height = 400
 screen = pygame.display.set_mode((screen_width, screen_height))
 pygame.display.set_caption("Battle")
 
+# Load additional UI images
+play_img = pygame.image.load("img/Icons/Buttons/Play.png").convert_alpha()
+next_img = pygame.image.load("img/Icons/Buttons/Next.png").convert_alpha()
+back_img = pygame.image.load("img/Icons/Buttons/Back.png").convert_alpha()
+close_img = pygame.image.load("img/Icons/Buttons/Close.png").convert_alpha()
+previous_img = pygame.image.load("img/Icons/Buttons/Previous.png").convert_alpha()
+
+# Game states
+MENU = 0
+PLAYING = 1
+GAME_OVER = 2
+PAUSED = 3  # New state for pause menu
+game_state = MENU
+
+# Additional fonts
+title_font = pygame.font.SysFont("Georgia", 48)
+menu_font = pygame.font.SysFont("Georgia", 32)
+
 current_fighter = 1
 total_fighters = 3
 action_cooldown = 0
@@ -213,133 +231,283 @@ achievement_button = Button(screen, 700, 20, achievement_img, 30, 30)
 volume_button = Button(screen, 750, 20, volume_img, 30, 30)
 restart_button = Button(screen, 330, 120, restart_img, 120, 30)
 
+# Create menu buttons
+play_button = Button(
+    screen, screen_width // 2 - 80, screen_height // 2 + 60, play_img, 64, 64
+)
+close_button = Button(
+    screen, screen_width // 2 + 40, screen_height // 2 + 60, close_img, 64, 64
+)
+back_button = Button(screen, 50, 50, back_img, 40, 40)
+
+
+def draw_menu():
+    # Draw a semi-transparent overlay
+    overlay = pygame.Surface((screen_width, screen_height))
+    overlay.fill((0, 0, 0))
+    overlay.set_alpha(128)
+    screen.blit(overlay, (0, 0))
+
+    # Draw title
+    draw_text(
+        "Epic Battle RPG",
+        screen_width // 2 - 250,
+        screen_height // 4 - 30,
+        (255, 215, 0),
+        title_font,
+    )
+
+    # Draw subtitle
+    draw_text(
+        "Level " + str(curr_level + 1),
+        screen_width // 2 - 250,
+        screen_height // 4 + 20,
+        (255, 255, 255),
+        menu_font,
+    )
+
+    # Draw buttons with their labels
+    if play_button.draw():
+        return PLAYING
+    if close_button.draw():
+        return "QUIT"
+
+    return MENU
+
+
+def draw_game_over_screen(victory):
+    # Make sure mouse is visible
+    pygame.mouse.set_visible(True)
+
+    # Draw a semi-transparent overlay
+    overlay = pygame.Surface((screen_width, screen_height))
+    overlay.fill((0, 0, 0))
+    overlay.set_alpha(180)
+    screen.blit(overlay, (0, 0))
+
+    # Draw victory/defeat image and text
+    if victory:
+        screen.blit(victory_img, (screen_width // 2 - victory_img.get_width() // 2, 50))
+        result_text = title_font.render("Victory!", True, (255, 215, 0))
+    else:
+        screen.blit(defeat_img, (screen_width // 2 - defeat_img.get_width() // 2, 50))
+        result_text = title_font.render("Defeat!", True, (255, 0, 0))
+
+    result_rect = result_text.get_rect(
+        center=(screen_width // 2, screen_height // 2 - 40)
+    )
+    screen.blit(result_text, result_rect)
+
+    # Draw stats
+    stats_text = font.render(
+        f"Potions remaining: {knight.potions}", True, (255, 255, 255)
+    )
+    stats_rect = stats_text.get_rect(
+        center=(screen_width // 2, screen_height // 2 + 20)
+    )
+    screen.blit(stats_text, stats_rect)
+
+    # Draw restart button and menu button
+    if restart_button.draw():
+        knight.reset()
+        for bandit in bandit_list:
+            bandit.reset()
+        return PLAYING
+
+    if back_button.draw():
+        knight.reset()
+        for bandit in bandit_list:
+            bandit.reset()
+        return MENU
+
+    # Draw button labels
+    draw_text(
+        "Restart", screen_width // 2, screen_height // 2 + 80, (255, 255, 255), font
+    )
+    draw_text("Menu", 50, 90, (255, 255, 255), font)
+
+    return GAME_OVER
+
+
+def draw_pause_menu():
+    # Draw a semi-transparent overlay
+    overlay = pygame.Surface((screen_width, screen_height))
+    overlay.fill((0, 0, 0))
+    overlay.set_alpha(160)
+    screen.blit(overlay, (0, 0))
+
+    # Draw pause title
+    draw_text(
+        "Paused",
+        screen_width // 2 - 250,
+        screen_height // 4 - 30,
+        (255, 255, 255),
+        title_font,
+    )
+
+    # Make sure mouse is visible in pause menu
+    pygame.mouse.set_visible(True)
+
+    # Draw resume and menu buttons
+    if back_button.draw():  # Use back button as resume
+        return PLAYING
+    if close_button.draw():
+        return MENU
+
+    return PAUSED
+
+
 make_level()
 
 run = True
 while run:
     clock.tick(fps)
     draw_bg()
-    draw_panel()
 
-    knight.update()
-    knight.draw()
+    if game_state == MENU:
+        result = draw_menu()
+        if result == PLAYING:
+            game_state = PLAYING
+        elif result == "QUIT":
+            run = False
 
-    knight_health_bar.draw(knight.hp)
+    elif game_state == PLAYING:
+        draw_panel()
+        knight.update()
+        knight.draw()
+        knight_health_bar.draw(knight.hp)
 
-    for i in range(len(bandit_list)):
-        bandit_list[i].update()
-        bandit_list[i].draw()
-        bandit_healthbar_list[i].draw(bandit_list[i].hp)
+        for i in range(len(bandit_list)):
+            bandit_list[i].update()
+            bandit_list[i].draw()
+            bandit_healthbar_list[i].draw(bandit_list[i].hp)
 
-    # control player actions
-    attack = False
-    potion = False
-    target = None
+        # Draw UI buttons with proper spacing
+        if setting_button.draw():
+            game_state = PAUSED
+        if achievement_button.draw():
+            pass  # Add achievement functionality if needed
+        if volume_button.draw():
+            pass  # Add volume functionality if needed
 
-    # reset mouse
-    pygame.mouse.set_visible(True)
-    pos = pygame.mouse.get_pos()
-    for count, bandit in enumerate(bandit_list):
-        if bandit.rect.collidepoint(pos) and bandit.alive:
-            # hide mouse
-            pygame.mouse.set_visible(False)
-            screen.blit(sword_img, pos)
-            if clicked:
-                attack = True
-                target = bandit_list[count]
+        if potion_button.draw() and knight.hp < 25:
+            potion = True
+        draw_text(str(knight.potions), 170, 10, (255, 255, 255), font)
 
-    # button actions
-    setting_button.draw()
-    achievement_button.draw()
-    volume_button.draw()
-    if potion_button.draw() and knight.hp < 25:
-        potion = True
-    draw_text(
-        str(knight.potions),
-        170,
-        10,
-        (255, 255, 255),
-        font,
-    )
+        # control player actions
+        attack = False
+        potion = False
+        target = None
 
-    if game_over == 0:
-        # player actions
-        if knight.alive:
-            if current_fighter == 1:
-                action_cooldown += 1
-                if action_cooldown >= action_wait_time:
-                    if attack and target is not None:
-                        knight.attack(target)
-                        current_fighter += 1
-                        action_cooldown = 0
-                    if potion:
-                        if knight.potions > 0:
-                            # heal
-                            if knight.max_hp - knight.hp > potion_effect:
-                                heal_amount = potion_effect
-                            else:
-                                heal_amount = knight.max_hp - knight.hp
-                            knight.hp += heal_amount
-                            knight.potions -= 1
-                            potion = False
-                            current_fighter += 1
-                            action_cooldown = 0
-        else:
-            game_over = -1
-
-        # enemy acition
+        # reset mouse
+        pygame.mouse.set_visible(True)
+        pos = pygame.mouse.get_pos()
         for count, bandit in enumerate(bandit_list):
-            if current_fighter == count + 2:
-                if bandit.alive:
+            if bandit.rect.collidepoint(pos) and bandit.alive:
+                pygame.mouse.set_visible(False)
+                screen.blit(sword_img, pos)
+                if clicked:
+                    attack = True
+                    target = bandit_list[count]
+
+        if game_over == 0:
+            # Your existing game logic for player and enemy actions
+            if knight.alive:
+                if current_fighter == 1:
                     action_cooldown += 1
                     if action_cooldown >= action_wait_time:
-                        if bandit.hp < bandit.max_hp / 2 and bandit.potions > 0:
-                            # heal
-                            if bandit.max_hp - bandit.hp > potion_effect:
-                                heal_amount = potion_effect
+                        if attack and target is not None:
+                            knight.attack(target)
+                            current_fighter += 1
+                            action_cooldown = 0
+                        if potion:
+                            if knight.potions > 0:
+                                if knight.max_hp - knight.hp > potion_effect:
+                                    heal_amount = potion_effect
+                                else:
+                                    heal_amount = knight.max_hp - knight.hp
+                                knight.hp += heal_amount
+                                knight.potions -= 1
+                                current_fighter += 1
+                                action_cooldown = 0
+            else:
+                game_over = -1
+
+            # enemy action
+            for count, bandit in enumerate(bandit_list):
+                if current_fighter == count + 2:
+                    if bandit.alive:
+                        action_cooldown += 1
+                        if action_cooldown >= action_wait_time:
+                            if bandit.hp < bandit.max_hp / 2 and bandit.potions > 0:
+                                if bandit.max_hp - bandit.hp > potion_effect:
+                                    heal_amount = potion_effect
+                                else:
+                                    heal_amount = bandit.max_hp - bandit.hp
+                                bandit.hp += heal_amount
+                                bandit.potions -= 1
+                                current_fighter += 1
+                                action_cooldown = 0
                             else:
-                                heal_amount = bandit.max_hp - bandit.hp
-                            bandit.hp += heal_amount
-                            bandit.potions -= 1
-                            current_fighter += 1
-                            action_cooldown = 0
-                        else:
-                            bandit.attack(knight)
-                            current_fighter += 1
-                            action_cooldown = 0
-                else:
-                    current_fighter += 1
+                                bandit.attack(knight)
+                                current_fighter += 1
+                                action_cooldown = 0
+                    else:
+                        current_fighter += 1
 
-        # if all fighters have had a turn reset
-        if current_fighter > total_fighters:
-            current_fighter = 1
+            if current_fighter > total_fighters:
+                current_fighter = 1
 
-    # check if all bandits are dead
-    alive_bandits = 0
-    for bandit in bandit_list:
-        if bandit.alive:
-            alive_bandits += 1
-
-    if alive_bandits == 0:
-        game_over = 1
-
-    # check game is over
-    if game_over != 0:
-        if game_over == 1:
-            screen.blit(
-                victory_img, (screen_width // 2 - victory_img.get_width() // 2, 50)
-            )
-        else:
-            screen.blit(
-                defeat_img, (screen_width // 2 - defeat_img.get_width() // 2, 50)
-            )
-        if restart_button.draw():
-            knight.reset()
+            # check if all bandits are dead
+            alive_bandits = 0
             for bandit in bandit_list:
-                bandit.reset()
+                if bandit.alive:
+                    alive_bandits += 1
+            if alive_bandits == 0:
+                game_over = 1
+                game_state = GAME_OVER
+
+            if game_over != 0:
+                game_state = GAME_OVER
+
+    elif game_state == GAME_OVER:
+        # First draw the game state
+        draw_panel()
+        knight.draw()
+        knight_health_bar.draw(knight.hp)
+        for i in range(len(bandit_list)):
+            bandit_list[i].draw()
+            bandit_healthbar_list[i].draw(bandit_list[i].hp)
+
+        # Then draw the game over screen
+        new_state = draw_game_over_screen(game_over == 1)
+        if new_state != GAME_OVER:
+            game_state = new_state
             game_over = 0
             action_cooldown = 0
             current_fighter = 1
+
+    elif game_state == PAUSED:
+        # Draw the game state in background
+        draw_panel()
+        knight.draw()
+        knight_health_bar.draw(knight.hp)
+        for i in range(len(bandit_list)):
+            bandit_list[i].draw()
+            bandit_healthbar_list[i].draw(bandit_list[i].hp)
+
+        # Draw pause menu
+        new_state = draw_pause_menu()
+        if new_state != PAUSED:
+            game_state = new_state
+            if new_state == MENU:
+                # Reset game when returning to menu
+                knight.reset()
+                for bandit in bandit_list:
+                    bandit.reset()
+                game_over = 0
+                action_cooldown = 0
+                current_fighter = 1
 
     for event in pygame.event.get():
         if event.type == pygame.MOUSEBUTTONDOWN:
